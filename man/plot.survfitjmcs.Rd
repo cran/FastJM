@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot.survfitjmcs.R
 \name{plot.survfitjmcs}
 \alias{plot.survfitjmcs}
-\title{Plot survival probabilities for new subjects}
+\title{Plot conditional probabilities for new subjects}
 \usage{
 \method{plot}{survfitjmcs}(
   x,
@@ -32,15 +32,17 @@ If single failure type, then survival probabilities will be returned.
 Otherwise, cumulative incidence probabilities for each failure type will be returned.
 }
 \description{
-Plot survival probabilities for new subjects.
+Plot conditional probabilities for new subjects. 
+If \code{CompetingRisk = FALSE}, print the survival probabilities. 
+Otherwise, print the cumulative incidence probabilities for each failure type.
 }
 \examples{
 \donttest{
 # a joint model fit
 fit <- jmcs(ydata = ydata, cdata = cdata, 
-long.formula = response ~ time + x1, 
-surv.formula = Surv(surv, failure_type) ~ x1 + x2, 
-random =  ~ time| ID)
+            long.formula = response ~ time + gender + x1 + race, 
+            surv.formula = Surv(surv, failure_type) ~ x1 + gender + x2 + race, 
+           random =  ~ time| ID)
 
 # Prediction of cumulative incidence for competing risks data
 ND <- ydata[ydata$ID \%in\% c(419, 218), ]
@@ -50,9 +52,10 @@ survfit <- survfitjmcs(fit,
                        ynewdata = ND, 
                        cnewdata = NDc, 
                        u = seq(3, 4.8, by = 0.2), 
-                       M = 100)
+                       M = 100,
+                       seed = 100)
                        
-oldpar <- par(mfrow = c(2, 2))
+oldpar <- par(mfrow = c(2, 2), mar = c(5, 4, 4, 4))
 plot(survfit, estimator = "both", include.y = TRUE)
 par(oldpar)
 }
