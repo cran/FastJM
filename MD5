@@ -1,6 +1,6 @@
-c5cab0e35e8668e5d9515a4d6f49a40e *DESCRIPTION
+1909bc1e7a8ed6ad444668c1a21e704e *DESCRIPTION
 29ccd2a5b774de74eb0b68fc58c30757 *NAMESPACE
-383f7963fb8bf425004f61bbae78caa8 *NEWS.md
+53d4948f1e37fb2c4db795cdd6930768 *NEWS.md
 3019bd7d6a063ba0c8ae661b35b59ad7 *R/CIF1.CR.R
 dd757efaa73266fef94586bc4eed31f4 *R/CIF2.CR.R
 643b8ca960418cccdf78fa8f78237581 *R/Diff.R
@@ -82,4 +82,4 @@ b3fce03c17497f519bab1a92c0b680b1 *src/getloglikeCpseudoSF.cpp
 a240d5cedd8273d3805a06dd4445b97c *src/getloglikeCstandardSF.cpp
 0622a97a2aaa3c342f09636052c2d7f5 *tests/spelling.R
 46650f74197e84205e72819ae9c14663 *tests/testthat.R
-a97c5bf1651bf769149af384b51421d7 *tests/testthat/test_jmcs.R
+4d6f03d6aaa13f79175b5ee7a5987ccb *tests/testthat/test_jmcs.R
