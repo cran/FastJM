@@ -1,6 +1,6 @@
-267ad4a5c037c1eda67e45890cab2d63 *DESCRIPTION
+458821b505c2695512d8455417742c62 *DESCRIPTION
 34bf69ddb1fc0fe4d903ba27128ef197 *NAMESPACE
-da023cc0f2a31c412eab5919866773fb *NEWS.md
+2e76657af6a6f2db98602014f72e5abf *NEWS.md
 fa60cbc1b2e62567cf97ac16797b19a5 *R/AUCjmcs.R
 83b14f17668860e32dfb67dccd3dd3e9 *R/CIF1.CR.R
 7c008c0cfee12d138836094556864b09 *R/CIF2.CR.R
@@ -14,7 +14,7 @@ d03380a1614e711358b7e538f2b554b3 *R/GetEmpiricalCIF.R
 2ad340fb4698583508873040b8f9290c *R/GetVarSurvfit.R
 bcf02ade4bb92022c9512f7c7aa5dda8 *R/Getinit.R
 bb7f2b30528b320151fba43203311478 *R/Getriskset.R
-d0b72fe1f91eb92aa069d307fdf1101b *R/MAEQjmcs.R
+22ea6e6a41aac585cc2ce7d725435ce0 *R/MAEQjmcs.R
 fe4cb7ec29c601606dc271f35b6053c9 *R/P.us.R
 0feb1380699384d5c6b01549d96af2d8 *R/PEjmcs.R
 a607e5c99341b498c391db9d79ce70a5 *R/Pk.us.R
@@ -28,7 +28,7 @@ e1566d940dc50812c0018f7ff93ce21c *R/getLoglikeSF.R
 beadafd000cc00cdc83971fe167e591d *R/getM.R
 2f939c391f43ebeb334c883a075228ff *R/getMSF.R
 39c66decf019ce7755019e1db13ce435 *R/getdummy.R
-4459c55ab8e59d02c1caaf3e2c2daaee *R/jmcs.R
+1fa7c45738b35c30ea3a5f1799c203b5 *R/jmcs.R
 f8d67adee732985dc6ee177113b28da2 *R/logLik.R
 b36c806317b182a7ce1aba54ffbe0206 *R/logLikCR.R
 8c37463d9de3fb4e3fe0b569b13c7d89 *R/plot.jmcs.R
@@ -41,7 +41,7 @@ da2452787330c7e6ccf52acb2e5df033 *R/sortdata.R
 1d956e697b8814b04bc8bc7056ad3c2b *R/summary.MAEQjmcs.R
 fe15c62a8d64ac8460c8d51584e16169 *R/summary.PEjmcs.R
 4a46563324ab07e380138139b2775228 *R/summary.jmcs.R
-e5d0b1641d322dce9da5d6b83dc2532c *R/survfitjmcs.R
+efa729476fc9d232b8031f7019e74022 *R/survfitjmcs.R
 10b27f54b3abec8292fa134878ce33d9 *R/vcov.jmcs.R
 01c2b0143bd69eebeb5a60dc736706b4 *README.md
 7167f54122618adddbbdd960996024f1 *data/cdata.rda
@@ -76,8 +76,8 @@ b4f0b014ec53404e843dbc718fabf57e *src/Makevars.win
 994eaca9cd72b64c65b7ac079c987254 *src/basics.cpp
 e0574405c24360fdd70d1f0a82255f5e *src/basics.h
 85e7a0239cee5cbc7f1fa5f26c25b1d1 *src/getBayes.cpp
-2d62686dc7c02e49ac881ce85e0c4601 *src/getCov.cpp
-1ce20eacd0963b54ed7adc65d0294d2b *src/getCovSF.cpp
+e3300bde4487f0c60f7898be6e82a4b5 *src/getCov.cpp
+9cd48e79c5e2a337c31fa5a3ea047133 *src/getCovSF.cpp
 31fe92783d648347966aa27e4aa8a7a8 *src/getECIF.cpp
 81fb2828a624ecbab9261b63c05db29f *src/getECpseudo.cpp
 47c4fc1b42aec2ec4f74e0a57e7a4930 *src/getECpseudoSF.cpp
