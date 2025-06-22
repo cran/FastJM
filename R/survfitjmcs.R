@@ -17,6 +17,11 @@
 ##' last available longitudinal time point for each subject. If a character string, then it should be 
 ##' a variable in cnewdata.
 ##' @param obs.time a character string of specifying a longitudinal time variable in ynewdata.
+##' @param LOCF a logical value to indicate whether the last-observation-carried-forward approach applies to prediction. 
+##' If \code{TRUE}, then \code{LOCFcovariate} and \code{clongdata} must be specified to indicate 
+##' which time-dependent survival covariates are included for dynamic prediction. Default is FALSE.
+##' @param LOCFcovariate a vector of string with time-dependent survival covariates if \code{LOCF = TRUE}. Default is NULL.
+##' @param clongdata a long format data frame where time-dependent survival covariates are incorporated. Default is NULL.
 ##' @param method a character string specifying the type of probability approximation; if \code{Laplace}, then a first order estimator is computed.
 ##' If \code{GH}, then the standard Gauss-Hermite quadrature is used instead.
 ##' @param quadpoint number of quadrature points used for estimating conditional probabilities 
@@ -29,7 +34,9 @@
 ##' @export
 ##' 
 survfitjmcs <- function(object, seed = 100, ynewdata = NULL, cnewdata = NULL, 
-                        u = NULL, Last.time = NULL, obs.time = NULL, method = c("Laplace", "GH"), 
+                        u = NULL, Last.time = NULL, obs.time = NULL, 
+                        LOCF = FALSE, LOCFcovariate = NULL, clongdata = NULL,
+                        method = c("Laplace", "GH"), 
                         quadpoint = NULL, ...) {
   if (!inherits(object, "jmcs"))
     stop("Use only with 'jmcs' objects.\n")
@@ -62,8 +69,35 @@ survfitjmcs <- function(object, seed = 100, ynewdata = NULL, cnewdata = NULL,
   if (!(ID %in% colnames(cnewdata)))
     stop(paste("The ID variable", ID, "is not found in cnewdata."))
   
+  if (LOCF) {
+    if (is.null(clongdata)) {
+      stop("Please provide a long format data frame that includes all longitudinal covariates for dynamic prediction.\n")
+    } else {
+      survival <- all.vars(object$SurvivalSubmodel)
+      if (prod(LOCFcovariate %in% survival) == 0)
+        stop("Some covariates are not trained in the joint model. Please reconsider the covariates for prediction.\n")
+      if (!obs.time %in% colnames(clongdata))
+        stop(paste0(obs.time, " is not found in clongdata."))
+      if (!(ID %in% colnames(clongdata)))
+        stop(paste("The ID variable", ID, "is not found in clongdata."))
+      clongID <- unique(clongdata[, ID])
+      cID <- cnewdata[, ID]
+      if (prod(clongID == cID) == 0) {
+        stop("The order of subjects in clongdata doesn't match with cdata.")
+      }
+    }
+  }
+  
   ynewdata <- ynewdata[, colnames(object$ydata)]
   cnewdata <- cnewdata[, colnames(object$cdata)]
+  
+  if (LOCF) {
+    clongdata <- clongdata[clongdata[, obs.time] <= Last.time, ]
+    clongdataLOCF <- clongdata %>%
+      dplyr::group_by(dplyr::across(ID)) %>%
+      dplyr::filter(row_number() == n())
+    cnewdata[, LOCFcovariate] <- clongdataLOCF[, LOCFcovariate]
+  }
   
   ydata2 <- rbind(object$ydata, ynewdata)
   cdata2 <- rbind(object$cdata, cnewdata)
@@ -106,16 +140,22 @@ survfitjmcs <- function(object, seed = 100, ynewdata = NULL, cnewdata = NULL,
   
   if (!is.null(Last.time)) {
     if (is.character(Last.time)) {
-      if (Last.time %in% colnames(cnewdata2)) {
-        Last.time <- cnewdata2[, Last.time]
+      if (Last.time %in% colnames(cnewdata)) {
+        Last.time <- cnewdata[, Last.time]
       } else {
         stop(paste(Last.time, "is not found in cnewdata."))
       }
     }
-    if (is.numeric(Last.time) && (length(Last.time) != nrow(cnewdata2)))
-      stop("The last.time vector does not match cnewdata.")
+    if (is.numeric(Last.time)) {
+      if (length(Last.time) == 1) {
+        Last.time <- rep(Last.time, nrow(cnewdata))
+      } 
+      if (length(Last.time) < nrow(cnewdata)) {
+        stop("The last.time vector does not match cnewdata.")
+      }
+    }
   } else {
-    Last.time <- cnewdata2[, Cvar[1]]
+    Last.time <- cnewdata[, Cvar[1]]
   }
   
   Pred <- list()

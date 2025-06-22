@@ -12,6 +12,9 @@ survfitjmcs(
   u = NULL,
   Last.time = NULL,
   obs.time = NULL,
+  LOCF = FALSE,
+  LOCFcovariate = NULL,
+  clongdata = NULL,
   method = c("Laplace", "GH"),
   quadpoint = NULL,
   ...
@@ -37,6 +40,14 @@ last available longitudinal time point for each subject. If a character string, 
 a variable in cnewdata.}
 
 \item{obs.time}{a character string of specifying a longitudinal time variable in ynewdata.}
+
+\item{LOCF}{a logical value to indicate whether the last-observation-carried-forward approach applies to prediction. 
+If \code{TRUE}, then \code{LOCFcovariate} and \code{clongdata} must be specified to indicate 
+which time-dependent survival covariates are included for dynamic prediction. Default is FALSE.}
+
+\item{LOCFcovariate}{a vector of string with time-dependent survival covariates if \code{LOCF = TRUE}. Default is NULL.}
+
+\item{clongdata}{a long format data frame where time-dependent survival covariates are incorporated. Default is NULL.}
 
 \item{method}{a character string specifying the type of probability approximation; if \code{Laplace}, then a first order estimator is computed.
 If \code{GH}, then the standard Gauss-Hermite quadrature is used instead.}

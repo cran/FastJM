@@ -14,6 +14,7 @@ jmcs(
   quadpoint = NULL,
   maxiter = 10000,
   print.para = FALSE,
+  initial.para = NULL,
   survinitial = TRUE,
   tol = 1e-04,
   method = "pseudo-adaptive",
@@ -44,6 +45,8 @@ to be chosen for numerical integration. Default is 6 which produces stable estim
 \item{maxiter}{the maximum number of iterations of the EM algorithm that the function will perform. Default is 10000.}
 
 \item{print.para}{Print detailed information of each iteration. Default is FALSE, i.e., not to print the iteration details.}
+
+\item{initial.para}{a list of initialized parameters for EM iteration. Default is NULL.}
 
 \item{survinitial}{Fit a Cox model to obtain initial values of the parameter estimates. Default is TRUE.}
 
@@ -165,8 +168,14 @@ APE
 ## evaluate prediction accuracy of fitted joint model using cross-validated mean AUC
 AUC <- AUCjmcs(fit, seed = 100, landmark.time = 3, horizon.time = c(3.6, 4, 4.4),
                obs.time = "time", method = "GH",
-               quadpoint = NULL, maxiter = 1000, n.cv = 3)
+               quadpoint = NULL, maxiter = 1000, n.cv = 3, metric = "AUC")
 summary(AUC, digits = 3)
+
+## or using cross-validated mean C-index
+Cindex <- AUCjmcs(fit, seed = 100, landmark.time = 3, horizon.time = c(3.6, 4, 4.4),
+               obs.time = "time", method = "GH",
+               quadpoint = NULL, maxiter = 1000, n.cv = 3, metric = "Cindex")
+summary(Cindex, digits = 3)
 
 }
 

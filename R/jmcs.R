@@ -16,6 +16,7 @@
 ##' to be chosen for numerical integration. Default is 6 which produces stable estimates in most dataframes.
 ##' @param maxiter the maximum number of iterations of the EM algorithm that the function will perform. Default is 10000.
 ##' @param print.para Print detailed information of each iteration. Default is FALSE, i.e., not to print the iteration details.
+##' @param initial.para a list of initialized parameters for EM iteration. Default is NULL. 
 ##' @param survinitial Fit a Cox model to obtain initial values of the parameter estimates. Default is TRUE.
 ##' @param tol Tolerance parameter. Default is 0.0001.
 ##' @param method Method for proceeding numerical integration in the E-step. Default is pseudo-adaptive. 
@@ -131,8 +132,14 @@
 ##' ## evaluate prediction accuracy of fitted joint model using cross-validated mean AUC
 ##' AUC <- AUCjmcs(fit, seed = 100, landmark.time = 3, horizon.time = c(3.6, 4, 4.4),
 ##'                obs.time = "time", method = "GH",
-##'                quadpoint = NULL, maxiter = 1000, n.cv = 3)
+##'                quadpoint = NULL, maxiter = 1000, n.cv = 3, metric = "AUC")
 ##' summary(AUC, digits = 3)
+##' 
+##' ## or using cross-validated mean C-index
+##' Cindex <- AUCjmcs(fit, seed = 100, landmark.time = 3, horizon.time = c(3.6, 4, 4.4),
+##'                obs.time = "time", method = "GH",
+##'                quadpoint = NULL, maxiter = 1000, n.cv = 3, metric = "Cindex")
+##' summary(Cindex, digits = 3)
 ##' 
 ##' }
 ##' 
@@ -141,7 +148,7 @@
 ##'
 
 jmcs <- function(ydata, cdata, long.formula, random = NULL, surv.formula, REML = TRUE,
-                 quadpoint = NULL, maxiter = 10000, print.para = FALSE, survinitial = TRUE, tol = 0.0001, 
+                 quadpoint = NULL, maxiter = 10000, print.para = FALSE, initial.para = NULL, survinitial = TRUE, tol = 0.0001, 
                  method = "pseudo-adaptive", opt = "nlminb")
 {
   
@@ -203,7 +210,8 @@ jmcs <- function(ydata, cdata, long.formula, random = NULL, surv.formula, REML =
   getinit <- Getinit(cdata = cdata, ydata = ydata, long.formula = long.formula,
                      surv.formula = surv.formula,
                      model = model, ID = ID, RE = RE, survinitial = survinitial, 
-                     REML = REML, random = random, opt = opt)
+                     REML = REML, random = random, 
+                     initial.para = initial.para, opt = opt)
   
   cdata <- getinit$cdata
   ydata <- getinit$ydata
@@ -248,10 +256,6 @@ jmcs <- function(ydata, cdata, long.formula, random = NULL, surv.formula, REML =
     p1a <- ncol(Sig)
     
     CompetingRisk <- FALSE
-  }
-  
-  if (p1a > 3 | p1a < 1) {
-    stop("The current package cannot handle this dimension of random effects. Please re-consider your model.")
   }
   
   getGH <- GetGHmatrix(quadpoint = quadpoint, Sig = Sig)
