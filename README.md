@@ -11,16 +11,29 @@ downloads](https://cranlogs.r-pkg.org/badges/FastJM)](https://cran.r-project.org
 [![CRAN_Status_Badge_version_last_release](https://www.r-pkg.org/badges/version-last-release/FastJM)](https://cran.r-project.org/package=FastJM)
 <!-- badges: end -->
 
-The `FastJM` package implement efficient computation of semi-parametric
-joint model of longitudinal and competing risks data.
+The `FastJM` package implements efficient computation of semi-parametric
+joint model of longitudinal and competing risks data. To view a brief
+guide on the purpose and use of this package, please refer to our
+[introductory video](https://youtu.be/sspYjUATICM?si=idTbVgT5DswN-yhe).
 
-# Example
+# Examples
+
+## Single-biomarker joint model (`jmcs`)
 
 The `FastJM` package comes with several simulated datasets. To fit a
-joint model, we use `jmcs` function.
+joint model, we use `jmcs` function. In the example below, we are using
+the following built-in data sets:
+
+- ydata: longitudinal data for a **single** biomarker per patient
+- cdata: competing risks time-to-event data per patient
 
 ``` r
 require(FastJM)
+#> Loading required package: FastJM
+#> Loading required package: survival
+#> Loading required package: MASS
+#> Loading required package: statmod
+#> Loading required package: magrittr
 require(survival)
 data(ydata)
 data(cdata)
@@ -229,8 +242,14 @@ summary(Cindex, digits = 3)
 #> 3          4.4 0.6862253 0.6757857
 ```
 
+## Multi-biomarker Joint Model (`mvjmcs`)
+
 To fit a joint model with multiple longitudinal outcomes and competing
-risks, we can use the `mvjmcs` function.
+risks, we can use the `mvjmcs` function. In the example below, we are
+using the following built-in data sets:
+
+- mvydata: longitudinal data for **multiple** biomarkers per patient
+- mvcdata: competing risks time-to-event data per patient
 
 ``` r
 data(mvydata)
@@ -245,7 +264,7 @@ mvfit <- mvjmcs(ydata = mvydata, cdata = mvcdata,
               maxiter = 1000, opt = "optim",
               tol = 1e-3, print.para = FALSE)
 #> runtime is:
-#> Time difference of 56.90911 secs
+#> Time difference of 40.09689 secs
 mvfit
 #> 
 #> Call:
@@ -316,8 +335,10 @@ We can extract the components of the model as follows:
 ``` r
 # Longitudinal fixed effects
 fixef(mvfit, process = "Longitudinal")
-#> (Intercept)_bio1         X11_bio1         X12_bio1        time_bio1 (Intercept)_bio2         X11_bio2         X12_bio2        time_bio2 
-#>        4.9740592        1.4653916        1.9979294        0.8427526        9.9754651        0.9796637        2.0095547        0.9937970
+#> (Intercept)_bio1         X11_bio1         X12_bio1        time_bio1 (Intercept)_bio2         X11_bio2 
+#>        4.9740592        1.4653916        1.9979294        0.8427526        9.9754651        0.9796637 
+#>         X12_bio2        time_bio2 
+#>        2.0095547        0.9937970
 summary(mvfit, process = "Longitudinal")
 #>        Longitudinal   coef     SE 95%Lower 95%Upper p-values
 #> 1  (Intercept)_bio1 4.9741 0.0539   4.8685   5.0797        0
@@ -364,7 +385,124 @@ head(ranef(mvfit))
 #> 6       -0.1187828 -0.0254132       0.06451794
 ```
 
-Currently, prediction and validation features (e.g., survfitjmcs,
-PEjmcs, AUCjmcs) are implemented for models of class jmcs. Extension to
-mvjmcs is under active development and will be available later this
-year.
+The `FastJM` package can now make dynamic prediction in the presence of
+multiple longitudinal outcomes. Below is a toy example for competing
+risks data. Conditional cumulative incidence probabilities for each
+failure will be presented.
+
+``` r
+require(dplyr)
+#> Loading required package: dplyr
+#> 
+#> Attaching package: 'dplyr'
+#> The following object is masked from 'package:MASS':
+#> 
+#>     select
+#> The following objects are masked from 'package:stats':
+#> 
+#>     filter, lag
+#> The following objects are masked from 'package:base':
+#> 
+#>     intersect, setdiff, setequal, union
+set.seed(08252025)
+sampleID <- sample(mvcdata$ID, 5, replace = FALSE)
+
+subcdata <- mvcdata %>%
+  dplyr::filter(ID %in% sampleID)
+
+subydata <- mvydata %>%
+  dplyr::filter(ID %in% sampleID)
+
+### Set up a landmark time of 4.75 and make predictions at time u
+survmvfit <- survfitmvjmcs(mvfit, seed = 100, ynewdata = subydata, cnewdata = subcdata,
+                         u = c(7, 8, 9), Last.time = 4.75, obs.time = "time")
+
+survmvfit
+#> 
+#> Prediction of Conditional Probabilities of Event
+#> based on the first order approximation
+#> $`177`
+#>   times       CIF1        CIF2
+#> 1  4.75 0.00000000 0.000000000
+#> 2  7.00 0.01835440 0.003145087
+#> 3  8.00 0.02632333 0.004747017
+#> 4  9.00 0.02939841 0.005963632
+#> 
+#> $`182`
+#>   times      CIF1       CIF2
+#> 1  4.75 0.0000000 0.00000000
+#> 2  7.00 0.2463582 0.03393494
+#> 3  8.00 0.3325719 0.04805378
+#> 4  9.00 0.3630881 0.05807832
+#> 
+#> $`260`
+#>   times       CIF1       CIF2
+#> 1  4.75 0.00000000 0.00000000
+#> 2  7.00 0.03315209 0.01750073
+#> 3  8.00 0.04724973 0.02623700
+#> 4  9.00 0.05262962 0.03281393
+#> 
+#> $`305`
+#>   times       CIF1       CIF2
+#> 1  4.75 0.00000000 0.00000000
+#> 2  7.00 0.02876153 0.01545058
+#> 3  8.00 0.04104952 0.02319795
+#> 4  9.00 0.04574922 0.02904055
+#> 
+#> $`800`
+#>   times       CIF1        CIF2
+#> 1  4.75 0.00000000 0.000000000
+#> 2  7.00 0.01293233 0.002102670
+#> 3  8.00 0.01857301 0.003178285
+#> 4  9.00 0.02075384 0.003996402
+```
+
+Currently, validation features (e.g., survfitjmcs, PEjmcs, AUCjmcs) are
+implemented for models of class jmcs. Extension to mvjmcs is under
+active development and will be available later this year.
+
+### Simulate Data (Optional)
+
+In order to create simulated data for `mvjmcs`, we can use the
+`simmvJMdata` function, which creates longitudinal and survival data as
+a nested list (which are unpacked the this example). When first calling
+the function, it provides censoring and risk rates.
+
+``` r
+# Simulate data
+  sim <- simmvJMdata(seed = 100, N = 50) # returns list of cdata and ydata for a sample size of 50
+#> The censoring rate is: 44%
+#> The risk 1 rate is: 48%
+#> The risk 2 rate is: 8%
+  c_data <- sim$mvcdata # survival-side data, one row per ID
+  y_data <- sim$mvydata # longitudinal measurements (multiple rows per ID)
+```
+
+Below is the simulated longitudinal data for **multiple** biomarkers,
+wherein Y1 and Y2 represent our biomarkers and X11 and X12 represent
+measurement-level predictors for the longitudinal submodel.
+
+``` r
+head(y_data)
+#>   ID time       Y1       Y2 X11       X12
+#> 1  1  0.0 2.325975 3.493627   0 -2.347892
+#> 2  1  0.7 2.328122 4.649502   0 -2.347892
+#> 3  1  1.4 2.793674 6.112850   0 -2.347892
+#> 4  1  2.1 2.221392 5.375753   0 -2.347892
+#> 5  1  2.8 1.864348 4.481401   0 -2.347892
+#> 6  1  3.5 3.988955 5.496069   0 -2.347892
+```
+
+Below is the simulated survival data wherein X21 and X22 represent
+patient-level predictors for the survival model.
+
+``` r
+head(c_data)
+#>   ID   survtime cmprsk X21        X22
+#> 1  1 6.10116281      0   0 -2.3478921
+#> 2  2 0.05456028      1   1  0.1826885
+#> 3  3 6.52978656      0   1  2.3791087
+#> 4  4 0.04942950      1   1  2.7961091
+#> 5  5 6.96785721      0   0 -3.8530560
+#> 6  6 7.20378227      0   0  1.1237335
+```
