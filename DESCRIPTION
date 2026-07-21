@@ -1,11 +1,13 @@
 Package: FastJM
 Type: Package
 Title: Semi-Parametric Joint Modeling of Longitudinal and Survival Data
-Version: 1.6.0
-Date: 2026-03-28
+Version: 1.7.0
+Date: 2026-07-20
 Authors@R: c(
     person("Shanpeng", "Li", email = "lishanpeng0913@ucla.edu", 
         role = c("aut", "cre")),
+    person("Ace", "Mejia-Sanchez", email = "aceisabel.mejiasanchez1@ucr.edu", 
+        role = "ctb"),  
     person("Emily", "Ouyang", email = "eouya001@ucr.edu", 
         role = "ctb"),   
     person("Gang", "Li", email = "vli@ucla.edu", 
@@ -28,18 +30,19 @@ Description: Implements scalable joint models for large-scale competing risks ti
 License: GPL (>= 3)
 NeedsCompilation: yes
 Imports: Rcpp (>= 1.0.7), dplyr, nlme, caret, pec, future,
-        future.apply, rlang (>= 0.4.11)
+        future.apply, tidycmprsk, rlang (>= 0.4.11), ggsurvfit,
+        ggplot2, ggpubr
 LinkingTo: Rcpp, RcppEigen
 Depends: R (>= 3.5.0), survival, utils, MASS, statmod, magrittr, stats
 RoxygenNote: 7.3.2
 LazyData: true
-Packaged: 2026-03-28 08:33:43 UTC; shanpengli
-VignetteBuilder: knitr
-Suggests: testthat (>= 3.0.0), spelling, knitr, rmarkdown
+Packaged: 2026-07-21 19:05:13 UTC; shanpengli
+Suggests: testthat (>= 3.0.0), spelling, rmarkdown
 Language: en-US
 Config/testthat/edition: 3
 Author: Shanpeng Li [aut, cre],
+  Ace Mejia-Sanchez [ctb],
   Emily Ouyang [ctb],
   Gang Li [ctb]
 Repository: CRAN
-Date/Publication: 2026-03-28 16:00:02 UTC
+Date/Publication: 2026-07-21 21:00:09 UTC

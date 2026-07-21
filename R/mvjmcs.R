@@ -1,69 +1,111 @@
-##' Joint modeling of multivariate longitudinal continuous data and competing risks
-##'
-##' Function fits a joint model for multiple longitudinal outcomes and competing risks using a fast EM algorithm.
-##'
 ##' @title Joint modeling of multivariate longitudinal and competing risks data
 ##' @name mvjmcs
-##' @param ydata A longitudinal data frame in long format.
-##' @param cdata A survival data frame with competing risks or single failure. Each subject has one data entry.
-##' @param long.formula A list of formula objects specifying fixed effects for each longitudinal outcome.
-##' @param random A formula or list of formulas describing random effects structures (e.g., \code{~ 1|ID}).
-##' @param surv.formula A formula for the survival sub-model, including survival time and event indicator.
-##' @param maxiter Maximum number of EM iterations. Default is 10000.
-##' @param opt Optimization method for mixed model. Default is \code{"nlminb"}.
-##' @param tol Convergence tolerance for EM algorithm. Default is 0.0001.
-##' @param print.para Logical; if \code{TRUE}, prints parameter values at each iteration.
-##' @param initial.para Optional list of initialized parameters. Default is \code{NULL}.
-##' @param cpu.cores Number of CPU cores for parallel computation. Default is 1. 
 ##'
-##' @return  Object of class \code{mvjmcs} with elements
-##' \item{beta}{the vector of all biomarker-specific fixed effects for the linear mixed effects sub-models.} 
-##' \item{betaList}{the list of biomarker-specific fixed effects for the linear mixed effects sub-model.} 
-##' \item{gamma1}{the vector of fixed effects for type 1 failure for the survival model.}
-##' \item{gamma2}{the vector of fixed effects for type 2 failure for the survival model. 
-##' Valid only if \code{CompetingRisk = TRUE}.}
-##' \item{alpha1}{the vector of association parameter(s) for type 1 failure.}
-##' \item{alpha2}{the vector of association parameter(s) for type 2 failure. Valid only if \code{CompetingRisk = TRUE}.}
-##' \item{H01}{the matrix that collects baseline hazards evaluated at each uncensored event time for type 1 failure. 
-##' The first column denotes uncensored event times, the second column the number of events, and the third columns 
-##' the hazards obtained by Breslow estimator.}
-##' \item{H02}{the matrix that collects baseline hazards evaluated at each uncensored event time for type 2 failure. 
-##' The data structure is the same as \code{H01}. Valid only if \code{CompetingRisk = TRUE}.}
-##' \item{Sig}{the variance-covariance matrix of the random effects.}
-##' \item{sigma}{the vector of the variance of the biomarker-specific measurement error for the linear mixed effects sub-models.}
-##' \item{iter}{the total number of iterations until convergence.}
-##' \item{convergence}{convergence identifier: 1 corresponds to successful convergence, 
-##' whereas 0 to a problem (i.e., when 0, usually more iterations are required).}
-##' \item{vcov}{the variance-covariance matrix of all the fixed effects for both models.}
-##' \item{FisherInfo}{the Empirical Fisher information matrix.}
-##' \item{Score}{a matrix of the score function for all subjects.}
-##' \item{sebeta}{the standard error of \code{beta}.}
-##' \item{segamma1}{the standard error of \code{gamma1}.}
-##' \item{segamma2}{the standard error of \code{gamma2}. 
-##' Valid only if \code{CompetingRisk = TRUE}.}
-##' \item{sealpha1}{the standard error of \code{nu1}.}
-##' \item{sealpha2}{the standard error of \code{nu2}. Valid only if \code{CompetingRisk = TRUE}.}
-##' \item{seSig}{the vector of standard errors of covariance of random effects.}
-##' \item{sesigma}{the standard error of variance of biomarker-specific measurement error for the linear mixed effects sub-models.}
-##' \item{pos.mode}{the posterior mode of the conditional distribution of random effects.}
-##' \item{pos.cov}{the posterior covariance of the conditional distribution of random effects.}
-##' \item{CompetingRisk}{logical value; TRUE if a competing event are accounted for.}
-##' \item{ydata}{the input longitudinal dataset for fitting a joint model.
-##' It has been re-ordered in accordance with descending observation times in \code{cdata}.}
-##' \item{cdata}{the input survival dataset for fitting a joint model.
-##' It has been re-ordered in accordance with descending observation times.}
-##' \item{PropEventType}{a frequency table of number of events.}
-##' \item{LongitudinalSubmodel}{the component of the \code{long.formula}.}
-##' \item{SurvivalSubmodel}{the component of the \code{surv.formula}.}
-##' \item{random}{the component of the \code{random}.}
-##' \item{call}{the matched call.}
-##' \item{id}{the grouping vector for the longitudinal outcome.}
-##' \item{opt}{the numerical optimizer for obtaining the initial guess of the parameters in the linear mixed effects sub-models.}
-##' \item{runtime}{the total computation time.}
+##' @param ydata A longitudinal data frame in long format.
+##' @param cdata A survival data frame with competing risks or single failure.
+##' Each subject has one data entry.
+##' @param long.formula A list of formula objects specifying fixed effects for
+##' each longitudinal outcome.
+##' @param random A formula or list of formulas describing random-effects
+##' structures. For example, a random-intercept model can be specified as
+##' \code{~ 1 | ID}.
+##' @param surv.formula A formula object specifying the survival time, event
+##' indicator, and covariates in the survival submodel.
+##' @param control A list of fitting-control options, typically generated by
+##' \code{\link{mvjmcs_control}()}. Available options include:
+##' \describe{
+##'   \item{\code{maxiter}}{Maximum number of EM iterations. The default is
+##'   \code{10000}.}
+##'   \item{\code{opt}}{Optimization method used to fit the initial mixed-effects
+##'   models. Available options are \code{"nlminb"} and \code{"optim"}. The
+##'   default is \code{"nlminb"}.}
+##'   \item{\code{tol}}{Convergence tolerance for the EM algorithm. The default is
+##'   \code{0.005}.}
+##'   \item{\code{verbose}}{Logical value indicating whether to print iteration
+##'   details. The default is \code{FALSE}.}
+##'   \item{\code{initial.para}}{Optional list of user-supplied initial parameter
+##'   values for the EM algorithm. The default is \code{NULL}.}
+##'   \item{\code{cpu.cores}}{Number of CPU cores used for parallel computation.
+##'   The default is \code{NULL}.}
+##' }
+##' @param latAsso Latent association structure. Options are \code{"sre"},
+##' \code{"present"}, and \code{"presentlp"}. The default is \code{"sre"}.
+##' @param landmark Logical value indicating whether landmarking is used.
+##' The default is \code{FALSE}.
+##' @param s Landmark time. Required when \code{landmark = TRUE} and
+##' \code{latAsso} is \code{"present"} or \code{"presentlp"}.
+##' @param ytime Name of the longitudinal time variable. Required when
+##' landmarking is used.
+##' @return
+##' An object of class \code{mvjmcs}, returned as a list containing:
+##' \describe{
+##'   \item{\code{beta}}{The vector of all biomarker-specific fixed effects for
+##'   the linear mixed-effects submodels.}
+##'   \item{\code{betaList}}{The list of biomarker-specific fixed effects for
+##'   the linear mixed-effects submodels.}
+##'   \item{\code{gamma1}}{The vector of fixed effects for type 1 failure in the
+##'   survival submodel.}
+##'   \item{\code{gamma2}}{The vector of fixed effects for type 2 failure in the
+##'   survival submodel. Valid only if \code{CompetingRisk = TRUE}.}
+##'   \item{\code{alpha1}}{The vector of association parameters for type 1
+##'   failure.}
+##'   \item{\code{alpha2}}{The vector of association parameters for type 2
+##'   failure. Valid only if \code{CompetingRisk = TRUE}.}
+##'   \item{\code{H01}}{The matrix of baseline hazards evaluated at uncensored
+##'   event times for type 1 failure.}
+##'   \item{\code{H02}}{The matrix of baseline hazards evaluated at uncensored
+##'   event times for type 2 failure. Valid only if
+##'   \code{CompetingRisk = TRUE}.}
+##'   \item{\code{Sig}}{The variance-covariance matrix of the random effects.}
+##'   \item{\code{sigma}}{The vector of biomarker-specific measurement-error
+##'   variances.}
+##'   \item{\code{iter}}{The total number of iterations until convergence.}
+##'   \item{\code{convergence}}{Convergence identifier: \code{1} indicates
+##'   successful convergence, whereas \code{0} indicates a convergence problem,
+##'   often requiring more iterations.}
+##'   \item{tol}{the convergence parameter.}
+##'   \item{\code{vcov}}{The variance-covariance matrix of all fixed-effect
+##'   parameters.}
+##'   \item{\code{FisherInfo}}{The empirical Fisher information matrix.}
+##'   \item{\code{Score}}{A matrix of subject-specific score contributions.}
+##'   \item{\code{sebeta}}{The standard errors of \code{beta}.}
+##'   \item{\code{segamma1}}{The standard errors of \code{gamma1}.}
+##'   \item{\code{segamma2}}{The standard errors of \code{gamma2}. Valid only if
+##'   \code{CompetingRisk = TRUE}.}
+##'   \item{\code{sealpha1}}{The standard errors of \code{alpha1}.}
+##'   \item{\code{sealpha2}}{The standard errors of \code{alpha2}. Valid only if
+##'   \code{CompetingRisk = TRUE}.}
+##'   \item{\code{seSig}}{The vector of standard errors for covariance parameters
+##'   of the random effects.}
+##'   \item{\code{sesigma}}{The standard errors of biomarker-specific
+##'   measurement-error variances.}
+##'   \item{\code{pos.mode}}{The posterior mode of the conditional distribution
+##'   of random effects.}
+##'   \item{\code{pos.cov}}{The posterior covariance of the conditional
+##'   distribution of random effects.}
+##'   \item{\code{CompetingRisk}}{Logical value indicating whether competing
+##'   events are modeled.}
+##'   \item{\code{ydata}}{The input longitudinal dataset, reordered according to
+##'   descending observation times in \code{cdata}.}
+##'   \item{\code{cdata}}{The input survival dataset, reordered according to
+##'   descending observation times.}
+##'   \item{\code{PropEventType}}{A frequency table of event types.}
+##'   \item{\code{LongitudinalSubmodel}}{The longitudinal submodel specified by
+##'   \code{long.formula}.}
+##'   \item{\code{SurvivalSubmodel}}{The survival submodel specified by
+##'   \code{surv.formula}.}
+##'   \item{\code{random}}{The random-effects specification.}
+##'   \item{\code{control}}{The fitting-control options used.}
+##'   \item{\code{call}}{The matched function call.}
+##'   \item{\code{id}}{The grouping vector for the longitudinal outcomes.}
+##'   \item{\code{runtime}}{The total computation time.}
+##'   \item{\code{latAsso}}{The pre-specified latent association structure.}
+##'   \item{\code{landmark}}{The logical value indicating whether landmarking is used.}
+##'   \item{\code{s}}{The pre-specified landmark time.}
+##'   \item{\code{ytime}}{The name of the longitudinal time variable.}
+##' }
 ##'
 ##' @examples
-##' 
-##' 
 ##'   require(FastJM)
 ##'   require(survival)
 ##'   require(future)
@@ -79,30 +121,93 @@
 ##'                                     Y2 ~ X11 + X12 + time),
 ##'                 random = list(~ time | ID,
 ##'                               ~ 1 | ID),
-##'                 surv.formula = Surv(survtime, cmprsk) ~ X21 + X22, maxiter = 1000, opt = "optim", 
-##'                 tol = 1e-3, print.para = FALSE)
+##'                 surv.formula = Surv(survtime, cmprsk) ~ X21 + X22)
 ##'   fit
-##'   
 ##'   # Extract the parameter estimates of longitudinal sub-model fixed effects
 ##'   fixef(fit, process = "Longitudinal")
-##'   
 ##'   # Extract the parameter estimates of survival sub-model fixed effects
 ##'   fixef(fit, process = "Event")
-##'   
 ##'   # Obtain the random effects estimates for first 6 subjects 
 ##'   head(ranef(fit))
+##'   
+##'   set.seed(08252025)
+##'   sampleID <- sample(mvcdata$ID, 2, replace = FALSE)
+##'   subcdata <- mvcdata %>%
+##'     dplyr::filter(ID %in% sampleID)
+##'   subydata <- mvydata %>%
+##'     dplyr::filter(ID %in% sampleID)
+##' # Make predictions at the horizon times
+##'   survfit.mv <- survfitJM(fit, seed = 100, ynewdata = subydata, cnewdata = subcdata,
+##'                           u = c(7, 8, 9), obs.time = "time")
+##'   survfit.mv
 ##'   }
 ##'   
 ##' @export
 
 mvjmcs <- function(ydata, cdata, long.formula,
                    random = NULL, surv.formula,
-                   maxiter = 10000, opt = "nlminb", tol = 0.005,
-                   print.para = TRUE, 
-                   initial.para = NULL, cpu.cores = NULL){
+                   control = mvjmcs_control(),
+                   latAsso = "sre", landmark = FALSE, s = NULL, ytime = NULL) {
+  
+  control <- utils::modifyList(mvjmcs_control(), control)
+  
+  maxiter      <- control$maxiter
+  opt          <- control$opt
+  tol          <- control$tol
+  verbose      <- control$verbose
+  initial.para <- control$initial.para
+  cpu.cores    <- control$cpu.cores
   
   start_time <- Sys.time()
   
+
+  
+  if(!(latAsso %in% c("sre", "present", "presentlp"))){
+    stop("latent value method currently does not work")
+  }
+  
+  if((latAsso %in% c("present", "presentlp") && !landmark && is.null(s) )){
+    stop("landmark=FALSE but method currently requires landmarking")
+  }
+  
+  
+  if((latAsso %in% c("present", "presentlp") && !landmark)){
+    warning("landmark=FALSE but method currently requires landmarking")
+  }
+  
+  
+  if (landmark && is.null(s)){
+    warning("landmark=TRUE but s is NULL; landmarking disabled and full data will be used.")
+    landmark <- FALSE
+  }
+  
+  if (isTRUE(landmark)) {
+    
+    if (is.null(ytime) || !is.character(ytime) || length(ytime) != 1) {
+      stop("When landmark = TRUE, 'ytime' must be specified as a single column name.")
+    }
+    
+    long.vars <- lapply(long.formula, all.vars)
+    
+    ytime.in.long <- vapply(
+      long.vars,
+      function(v) ytime %in% v,
+      logical(1)
+    )
+    
+    if (!all(ytime.in.long)) {
+      missing.forms <- which(!ytime.in.long)
+      
+      stop(
+        "When landmark = TRUE, the time variable specified by 'ytime' must be included ",
+        "in every component of 'long.formula'. The variable '", ytime,
+        "' is missing from long.formula component(s): ",
+        paste(missing.forms, collapse = ", "),
+        "."
+      )
+    }
+  }
+
   # ---- Longitudinal setup ----
   if(is.list(long.formula)){
     numBio = length(long.formula)
@@ -127,15 +232,16 @@ mvjmcs <- function(ydata, cdata, long.formula,
   } else {
     for(g in 1:numBio){
       random.form[[g]] <- all.vars(random)
-      if(!is.list(random)){
-        # RE[[g]] <- NULL
+      
+      if (length(random.form[[g]]) == 1) {
         model[[g]] <- "intercept"
       } else {
-        RE[[g]] <- random.form[[g]][-length(all.vars(random))]
+        RE[[g]] <- random.form[[g]][-length(random.form[[g]])]
         model[[g]] <- "interslope"
       }
     }
     ID <- random.form[[g]][length(all.vars(random))]
+  
   }
   
   lengthb <- length(long.formula)
@@ -170,7 +276,8 @@ mvjmcs <- function(ydata, cdata, long.formula,
   getinit <- Getmvinit(cdata = cdata, ydata = ydata, long.formula = long.formula,
                        surv.formula = surv.formula,
                        model = model, ID = ID, RE = RE,
-                       REML = TRUE, random = random, opt = opt, initial.para)
+                       REML = TRUE, random = random, opt = opt, initial.para, latAsso = latAsso, landmark = landmark, s = s, ytime = ytime)
+  
   
   if (is.null(getinit)) {
     stop("Numerical failure occurred when fitting a linear mixed effects model for initial guess.")
@@ -199,29 +306,27 @@ mvjmcs <- function(ydata, cdata, long.formula,
   cdata <- getinit$cdata
   
   survival <- all.vars(surv.formula)
+  
   status <- as.vector(cdata[, survival[2]])
-  if (prod(c(0, 1, 2) %in% unique(status))) {
-    ## initialize parameters
-    
+  getriskset <- Getriskset(cdata = cdata, surv.formula = surv.formula)
+  
+  if (!all(status %in% c(0, 1, 2))) {
+    stop("Status variable must be coded as 0 = censored, 1 = event type 1, and 2 = event type 2.")
+  }
+  
+  if (any(status == 2)) {
     getriskset <- Getriskset(cdata = cdata, surv.formula = surv.formula)
-    
-    ## number of distinct survival time
+    # number of distinct survival time
     H01 <- getriskset$tablerisk1
     H02 <- getriskset$tablerisk2
     
     CompetingRisk <- TRUE
   } else {
     getriskset <- Getriskset(cdata = cdata, surv.formula = surv.formula)
-    
-    ## number of distinct survival time
     H01 <- getriskset$tablerisk1
+    
     CompetingRisk <- FALSE
   }
-  
-  # GH.val  <- gauss.quad.prob(quadpoint)
-  # weight.c <- GH.val$weights # weights
-  # abscissas.c <- GH.val$nodes # abscissas
-  
   
   survtime <- getinit$survtime
   cmprsk <- getinit$cmprsk
@@ -256,7 +361,6 @@ mvjmcs <- function(ydata, cdata, long.formula,
     
     
     numSubj <- n
-    # opt <- list()
     pos.mode <- vector("list", numSubj)
     subX1 <- subY <- subZ <- vector("list", numSubj)
     pos.cov <- list()
@@ -290,8 +394,39 @@ mvjmcs <- function(ydata, cdata, long.formula,
       }
     }
     
-    survtime <- getinit$survtime
-    cmprsk <- getinit$cmprsk
+    subXs <- subZs <- vector("list", numSubj)
+    
+    if (landmark && latAsso %in% c("present", "presentlp")) {
+      
+      Xs <- getinit$Xs
+      Zs <- getinit$Zs
+      
+      for (j in seq_len(numSubj)) {
+        subZs[[j]] <- vector("list", numBio)
+        
+        if (latAsso == "present") {
+          subXs[[j]] <- vector("list", numBio)
+        }
+        
+        index <- 1
+        
+        for (g in seq_len(numBio)) {
+          qg <- pREvec[g]
+          
+          if (latAsso == "present") {
+            subXs[[j]][[g]] <- Xs[[g]][j, , drop = FALSE]
+          }
+          
+          subZs[[j]][[g]] <- Zs[g, index:(index + qg - 1), drop = FALSE]
+          index <- index + qg
+        }
+      }
+      
+    } else {
+      subXs <- NULL
+      subZs <- NULL
+    }
+    
     W <- getinit$W
     ngamma <- ncol(W)
     
@@ -325,7 +460,7 @@ mvjmcs <- function(ydata, cdata, long.formula,
       preSig <- Sig
       presigma <- sigma
       
-      if (print.para) {
+      if (verbose) {
         writeLines("iter is:")
         print(iter)
         writeLines("beta is:")
@@ -345,11 +480,15 @@ mvjmcs <- function(ydata, cdata, long.formula,
       }
       
       data <- list(
-        beta = betaList, gamma1 = gamma1, gamma2 = gamma2,
-        alpha = alphaList, sigma = sigma,
+        beta = betaList, 
+        gamma1 = gamma1, gamma2 = gamma2,
+        alpha = alphaList, 
+        sigma = sigma,
         Z = subZ, X1 = subX1, Y = subY, Sig = Sig,
         CUH01 = CUH01, CUH02 = CUH02, HAZ01 = HAZ01, HAZ02 = HAZ02,
-        cmprsk = cmprsk, W = W
+        cmprsk = cmprsk, W = W, landmark = landmark, latAsso = latAsso, s = s,   
+        Xs = subXs,
+        Zs = subZs
       )
       
       res <- future.apply::future_lapply(seq_len(numSubj), estepMV_worker, future.seed = TRUE, future.scheduling = 2,
@@ -357,14 +496,26 @@ mvjmcs <- function(ydata, cdata, long.formula,
       pos.mode <- lapply(res, `[[`, "mode")
       pos.cov  <- lapply(res, function(x) crossprod(x$ccov))
       
-      output <- normalApprox(
-        subX1, subY, subZ, W,
-        mdataM, mdataSM,
-        pos.mode, sigma, pos.cov,
-        H01, H02, survtime, cmprsk,
-        gamma1, gamma2, alphaList,
-        CUH01, CUH02, HAZ01, HAZ02, Sig, betaList
-      )
+      if(latAsso == "sre"){
+        output <- normalApprox(
+          subX1, subY, subZ, W,
+          mdataM, mdataSM,
+          pos.mode, sigma, pos.cov,
+          H01, H02, survtime, cmprsk,
+          gamma1, gamma2, alphaList,
+          CUH01, CUH02, HAZ01, HAZ02, Sig, betaList
+        )
+      } else if(latAsso == "presentlp" ||latAsso == "present"){
+        output <- normalApprox_lm(
+          subX1, subY, subZ, W,
+          mdataM, mdataSM,
+          pos.mode, sigma, pos.cov,
+          H01, H02, survtime, cmprsk,
+          gamma1, gamma2, alphaList,
+          CUH01, CUH02, HAZ01, HAZ02, Sig, betaList, s,  subXs,
+          getinit$Zs, latAsso
+        )
+      }
       
       beta <- output$beta
       betaList <- output$betaList
@@ -377,17 +528,23 @@ mvjmcs <- function(ydata, cdata, long.formula,
       alpha2 <- output$phi2[(ngamma+1):(length(output$phi2))]
       alpha1g <- alpha2g <- vector("list", numBio)
       index = 0
-      for(g in 1:numBio){
-        alpha1g[[g]] <- alpha1[(index+1):(index + pREvec[g])]
-        alpha2g[[g]] <- alpha2[(index+1):(index + pREvec[g])]
-        index = index + pREvec[g]
+      if (latAsso == "sre") {
+        index <- 0
+        for (g in seq_len(numBio)) {
+          alpha1g[[g]] <- alpha1[(index + 1):(index + pREvec[g])]
+          alpha2g[[g]] <- alpha2[(index + 1):(index + pREvec[g])]
+          index <- index + pREvec[g]
+        }
+      } else {
+        for (g in seq_len(numBio)) {
+          alpha1g[[g]] <- alpha1[g]
+          alpha2g[[g]] <- alpha2[g]
+        }
       }
       
       alphaList <- list(alpha1g, alpha2g)
       H01 <- output$H01
       H02 <- output$H02
-      
-      
       
       if((mvDiffrelative(beta, prebeta, sigma, presigma, gamma1, pregamma1, gamma2, pregamma2,
                  alpha1, prealpha1, alpha2, prealpha2,
@@ -415,24 +572,37 @@ mvjmcs <- function(ydata, cdata, long.formula,
       CumuH02 <- cumsum(H02[, 3])
       getHazard(CumuH01, CumuH02, survtime, cmprsk, H01, H02, CUH01, CUH02, HAZ01, HAZ02)
       
-      data <- list(beta = betaList, gamma1 = gamma1, gamma2 = gamma2,
-                   alpha = alphaList, sigma = sigma,
-                   Z = subZ, X1 = subX1, Y = subY, Sig = Sig,
-                   CUH01 = CUH01,  HAZ01 = HAZ01, CUH02 = CUH02,  HAZ02 = HAZ02,
-                   mdataM = mdataM, mdataSM = mdataSM,
-                   cmprsk = cmprsk, W = W)
+      data <- list(
+        beta = betaList, gamma1 = gamma1, gamma2 = gamma2,
+        alpha = alphaList, sigma = sigma,
+        Z = subZ, X1 = subX1, Y = subY, Sig = Sig,
+        CUH01 = CUH01, CUH02 = CUH02, HAZ01 = HAZ01, HAZ02 = HAZ02,
+        cmprsk = cmprsk, W = W, landmark = landmark, latAsso = latAsso, s = s,   
+        Xs = subXs,
+        Zs = subZs
+      )
       
       res <- future.apply::future_lapply(seq_len(numSubj), estepMV_worker, future.seed = TRUE, future.scheduling = 2,
                                          data, pREtotal)
       pos.mode <- lapply(res, `[[`, "mode")
       pos.cov  <- lapply(res, function(x) crossprod(x$ccov))
       
-      SEest <- getmvCov(beta, gamma1, gamma2,
+      if(latAsso == "sre"){
+        SEest <- getmvCov(beta, gamma1, gamma2,
                           alpha1, alpha2,
-                          H01, H02, pos.cov, Sig, sigma, 
-                          subX1, subY, subZ, getinit$W, 
+                          H01, H02, pos.cov, Sig, sigma,
+                          subX1, subY, subZ, getinit$W,
                           getinit$survtime,getinit$cmprsk,
                           mdataM, mdataSM, pos.mode)
+      }else{
+        SEest <- getmvCov_lm(beta, gamma1, gamma2,
+                             alpha1, alpha2,
+                             H01, H02, pos.cov, Sig, sigma,
+                             subX1, subY, subZ, W,
+                             survtime, cmprsk,
+                             mdataM, mdataSM, pos.mode,
+                             subXs, s, getinit$Zs, latAsso = latAsso)
+      }
       
       sebeta <- SEest$sebeta
       sesigma <- SEest$sesigma
@@ -448,9 +618,7 @@ mvjmcs <- function(ydata, cdata, long.formula,
     }
     
     end_time <- Sys.time()
-    
-    writeLines("runtime is:")
-    print(runtime <- end_time - start_time)
+    runtime <- end_time - start_time
     
     PropComp <- as.data.frame(table(cdata[, survival[2]]))
     call <- match.call()
@@ -467,16 +635,15 @@ mvjmcs <- function(ydata, cdata, long.formula,
     
     names(beta) <- unlist(namesbeta)
     
-    result <- list(beta = beta, betaList = output$betaList, gamma1 = gamma1, gamma2 = gamma2, 
+    result <- list(beta = beta, betaList = betaList, gamma1 = gamma1, gamma2 = gamma2, 
                    alpha1 = alpha1, alpha2 = alpha2, H01 = H01, H02 = H02, 
-                   Sig = Sig, sigma = sigma, iter = iter, convergence = convergence, 
-                   vcov = vcov, FisherInfo = FisherInfo, Score = Score, sebeta = sebeta, segamma1 = segamma1, segamma2 = segamma2, 
+                   Sig = Sig, sigma = sigma, iter = iter, convergence = convergence, tol = tol,
+                   vcov = vcov, FisherInfo = FisherInfo, Score = Score, sebeta = sebeta, segamma1 = segamma1, segamma2 = segamma2,
                    sealpha1 = sealpha1, sealpha2 = sealpha2, seSig = seSig, sesigma = sesigma, pos.mode = pos.mode, pos.cov = pos.cov,
                    CompetingRisk = CompetingRisk, ydata = rawydata, cdata = rawcdata, 
                    PropEventType = PropComp, LongitudinalSubmodel = long.formula,
                    SurvivalSubmodel = surv.formula, random = random, call = call, id = ID, opt = opt,
-                   runtime = runtime)
-    
+                   runtime = runtime, latAsso = latAsso, landmark = landmark, s = s, ytime = ytime)
     
     class(result) <- "mvjmcs"
     
@@ -540,6 +707,39 @@ mvjmcs <- function(ydata, cdata, long.formula,
       }
     }
     
+    subXs <- subZs <- vector("list", numSubj)
+    
+    if (landmark && latAsso %in% c("present", "presentlp")) {
+      
+      Xs <- getinit$Xs
+      Zs <- getinit$Zs
+      
+      for (j in seq_len(numSubj)) {
+        subZs[[j]] <- vector("list", numBio)
+        
+        if (latAsso == "present") {
+          subXs[[j]] <- vector("list", numBio)
+        }
+        
+        index <- 1
+        
+        for (g in seq_len(numBio)) {
+          qg <- pREvec[g]
+          
+          if (latAsso == "present") {
+            subXs[[j]][[g]] <- Xs[[g]][j, , drop = FALSE]
+          }
+          
+          subZs[[j]][[g]] <- Zs[g, index:(index + qg - 1), drop = FALSE]
+          index <- index + qg
+        }
+      }
+      
+    } else {
+      subXs <- NULL
+      subZs <- NULL
+    }
+    
     survtime <- getinit$survtime
     cmprsk <- getinit$cmprsk
     W <- getinit$W
@@ -570,7 +770,7 @@ mvjmcs <- function(ydata, cdata, long.formula,
       preSig <- Sig
       presigma <- sigma
       
-      if (print.para) {
+      if (verbose) {
         writeLines("iter is:")
         print(iter)
         writeLines("beta is:")
@@ -589,7 +789,9 @@ mvjmcs <- function(ydata, cdata, long.formula,
                    alpha = alphaList, sigma = sigma,
                    Z = subZ, X1 = subX1, Y = subY, Sig = Sig,
                    CUH01 = CUH01, HAZ01 = HAZ01, 
-                   cmprsk = cmprsk, W = W)
+                   cmprsk = cmprsk, W = W, landmark = landmark, latAsso = latAsso, s = s,   
+                   Xs = subXs,
+                   Zs = subZs)
       
       # specify cpu amounts
       
@@ -598,12 +800,25 @@ mvjmcs <- function(ydata, cdata, long.formula,
       pos.mode <- lapply(res, `[[`, "mode")
       pos.cov <- lapply(res, function(x) crossprod(x$ccov)) 
       
-      output <- normalApproxSF(subX1,subY, subZ, W,
-                               mdataM, mdataSM,
-                               pos.mode,  sigma, pos.cov,
-                               H01, survtime, cmprsk,
-                               gamma1, alphaList,
-                               CUH01,HAZ01, Sig, beta)
+      
+      if(latAsso == "sre"){
+        output <- normalApproxSF(subX1,subY, subZ, W,
+                                 mdataM, mdataSM,
+                                 pos.mode,  sigma, pos.cov,
+                                 H01, survtime, cmprsk,
+                                 gamma1, alphaList,
+                                 CUH01,HAZ01, Sig, beta)
+      } else{
+        output <- normalApprox_lmSF(
+          subX1, subY, subZ, W,
+          mdataM, mdataSM,
+          pos.mode, sigma, pos.cov,
+          H01, survtime, cmprsk,
+          gamma1, alphaList,
+          CUH01, HAZ01, Sig, betaList, s,  subXs,
+          getinit$Zs, latAsso
+        )
+      }
       
       beta <- output$beta
       betaList <- output$betaList
@@ -614,9 +829,17 @@ mvjmcs <- function(ydata, cdata, long.formula,
       alpha1 <- output$phi1[(ngamma+1):(length(output$phi1))]
       alpha1g <- vector("list", numBio)
       index = 0
-      for(g in 1:numBio){
-        alpha1g[[g]] <- alpha1[(index+1):(index + pREvec[g])]
-        index = index + pREvec[g]
+      
+      if (latAsso == "sre") {
+        index <- 0
+        for (g in seq_len(numBio)) {
+          alpha1g[[g]] <- alpha1[(index + 1):(index + pREvec[g])]
+          index <- index + pREvec[g]
+        }
+      } else {
+        for (g in seq_len(numBio)) {
+          alpha1g[[g]] <- alpha1[g]
+        }
       }
       
       alphaList <- list(alpha1g)
@@ -647,22 +870,36 @@ mvjmcs <- function(ydata, cdata, long.formula,
       CumuH01 <- cumsum(H01[, 3])
       getHazardSF(CumuH01, survtime, cmprsk, H01, CUH01, HAZ01)
       
-      data <- list(beta = betaList, gamma1 = gamma1,
-                   alpha = alphaList, sigma = sigma,
-                   Z = subZ, X1 = subX1, Y = subY, Sig = Sig,
-                   CUH01 = CUH01, HAZ01 = HAZ01,
-                   cmprsk = cmprsk, W = W)
+      data <- list(
+        beta = betaList, gamma1 = gamma1,
+        alpha = alphaList, sigma = sigma,
+        Z = subZ, X1 = subX1, Y = subY, Sig = Sig,
+        CUH01 = CUH01, HAZ01 = HAZ01,
+        cmprsk = cmprsk, W = W, landmark = landmark, latAsso = latAsso, s = s,   
+        Xs = subXs,
+        Zs = subZs
+      )
       
       res <- future.apply::future_lapply(seq_len(numSubj), estepMV_workerSF, future.seed = TRUE, future.scheduling = 2, data, pREtotal)
       pos.mode <- lapply(res, `[[`, "mode")
       pos.cov  <- lapply(res, function(x) crossprod(x$ccov))
       
-      SEest <- getmvCovSF(beta, gamma1,
-                          alpha1,  
-                          H01, pos.cov, Sig, sigma, 
-                          subX1, subY, subZ, getinit$W, 
+      if(latAsso == "sre"){
+        SEest <- getmvCovSF(beta, gamma1, 
+                          alpha1, 
+                          H01, pos.cov, Sig, sigma,
+                          subX1, subY, subZ, getinit$W,
                           getinit$survtime,getinit$cmprsk,
                           mdataM, mdataSM, pos.mode)
+      }else{
+        SEest <- getmvCov_lmSF(beta, gamma1,
+                             alpha1, 
+                             H01, pos.cov, Sig, sigma,
+                             subX1, subY, subZ, W,
+                             survtime, cmprsk,
+                             mdataM, mdataSM, pos.mode,
+                             subXs, s, getinit$Zs, latAsso = latAsso)
+      }
       
       sebeta <- SEest$sebeta
       sesigma <- SEest$sesigma
@@ -675,7 +912,7 @@ mvjmcs <- function(ydata, cdata, long.formula,
     }
     
     end_time <- Sys.time()
-    print(runtime <- end_time - start_time)
+    runtime <- end_time - start_time
     
     PropComp <- as.data.frame(table(cdata[, survival[2]]))
     call <- match.call()
@@ -694,14 +931,14 @@ mvjmcs <- function(ydata, cdata, long.formula,
     
     result <- list(beta = beta, betaList = betaList, gamma1 = gamma1, 
                    alpha1 = alpha1, H01 = H01, 
-                   Sig = Sig, sigma = sigma, iter = iter, convergence = convergence, 
+                   Sig = Sig, sigma = sigma, iter = iter, convergence = convergence, tol = tol,
                    vcov = vcov, FisherInfo = FisherInfo, Score = Score, sebeta = sebeta, segamma1 = segamma1,
                    sealpha1 = sealpha1, seSig = seSig, sesigma = sesigma, 
                    pos.mode = pos.mode, pos.cov = pos.cov,
                    CompetingRisk = CompetingRisk, ydata = rawydata, cdata = rawcdata, 
                    PropEventType = PropComp, LongitudinalSubmodel = long.formula,
                    SurvivalSubmodel = surv.formula, random = random, call = call, id = ID, opt = opt,
-                   runtime = runtime)
+                   runtime = runtime, latAsso = latAsso, landmark = landmark, s = s, ytime = ytime)
     
     class(result) <- "mvjmcs"
     
