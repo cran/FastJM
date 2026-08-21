@@ -1,8 +1,8 @@
 Package: FastJM
 Type: Package
 Title: Semi-Parametric Joint Modeling of Longitudinal and Survival Data
-Version: 1.7.0
-Date: 2026-07-20
+Version: 1.7.1
+Date: 2026-08-20
 Authors@R: c(
     person("Shanpeng", "Li", email = "lishanpeng0913@ucla.edu", 
         role = c("aut", "cre")),
@@ -36,7 +36,7 @@ LinkingTo: Rcpp, RcppEigen
 Depends: R (>= 3.5.0), survival, utils, MASS, statmod, magrittr, stats
 RoxygenNote: 7.3.2
 LazyData: true
-Packaged: 2026-07-21 19:05:13 UTC; shanpengli
+Packaged: 2026-08-20 14:09:56 UTC; shanpengli
 Suggests: testthat (>= 3.0.0), spelling, rmarkdown
 Language: en-US
 Config/testthat/edition: 3
@@ -45,4 +45,4 @@ Author: Shanpeng Li [aut, cre],
   Emily Ouyang [ctb],
   Gang Li [ctb]
 Repository: CRAN
-Date/Publication: 2026-07-21 21:00:09 UTC
+Date/Publication: 2026-08-21 10:20:10 UTC
